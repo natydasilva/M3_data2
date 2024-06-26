@@ -1,0 +1,165 @@
+---
+title: "Actividad 3 Solución"
+format: pdf
+editor: visual
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,
+  tidy.opts = list(width.cutoff = 55),
+  tidy = 'styler',
+  fig.pos = 'hbpt',
+  out.extra = '',
+  message = FALSE, 
+  warning=FALSE
+)
+```
+
+# Ejercicio 1
+
+Cargar la librería `tidyverse` y con los datos `mpg` usar las funciones que vimos de `dplyr` para transformar los datos de la siguiente forma.
+
+1.  Seleccionar el conjunto de autos del 2008 que tienen `hwy` mayor a 31. ¿Cuantos autos son?
+
+```{r}
+library(tidyverse)
+mpg |>   
+  filter(year ==  2008, hwy > 31) |>   
+  print(n = 5)  
+```
+
+En este caso son solamente 6 autos y es sencillo contar pero podemos usar `summarise` o `count` para contarlos.
+
+```{r}
+mpg |>
+  filter(year ==  2008, hwy > 31) |>
+  summarise(n = n())
+```
+
+2.  Seleccionar el conjutno de autos que tienen `cty` igual a 9 ó hwy es mayor a 90. ¿Cuantos autos son?
+ En este caso estoy pidiendo una condición que implica unión (no intersección como el anterior), los autos que cumplan *al menos* una de las condiciones deben ser incluidos. Para esto uso `|` para filtrar, noten que no hay autos con `hwy > 90` en la tabla.
+
+```{r}
+
+mpg |> filter(cty == 9 | hwy > 90) |> 
+  select(cty, hwy) 
+
+```
+
+```{r}
+mpg |> filter(cty == 9 | hwy > 90) |>
+  summarise(n = n())
+```
+
+3.  Selecciona la variable `displ` y `hwy`
+
+Aquí usamos el verbo `select` para elegir las variables que se piden.
+
+```{r}
+mpg |> 
+  select(displ, hwy) |>
+  print(n = 5)
+```
+
+4.  Seleccioná desde la variable `trans` hasta la variable `hwy`
+
+Similar al anterior, si uso `select(trans:hwy)` obtengo lo que se pide
+
+```{r}
+mpg|>
+  select(trans:hwy) |>
+  print(n = 5)
+```
+
+5.  Produce un dataframe: marca, modelo, año, cantidad de cilindros y rendimiento en ciudad. Únicamente para los autos, toyota, camry.
+
+```{r, eval=FALSE}
+
+mpg |>
+filter(manufacturer == 'toyota' & model == 'camry') |>
+select(manufacturer, model, year, cyl, cty) |> 
+    dim()
+```
+
+6.  Calcula el rendimiento promedio en ciudad para cada marca (`manufacturer`). ¿Cuál es el mejor rendimiento en ciudad? y el peor ?
+
+```{r,eval=TRUE, echo=TRUE}
+mpg |> 
+  group_by(manufacturer) |>
+  summarise(rend.ciudad = mean(cty) ) |>
+  filter(rend.ciudad == min(rend.ciudad) | rend.ciudad == max(rend.ciudad))
+
+# ó también
+# mpg |> 
+#   group_by(manufacturer) |>
+#   summarise(rend.ciudad = mean(cty)) |> 
+#   summarise(minimo = min(rend.ciudad), maximo = max(rend.ciudad))
+```
+
+7.  Para cada marca: calcula el rendimiento promedio en ciudad, el error estandard de la media, y el rango
+
+```{r}
+mpg |> 
+  group_by(manufacturer) |>
+  summarise(rend.mn = mean(cty), 
+            rend.se = sd(cty)/sqrt(n()), 
+            rend.rg = max(cty) - min(cty))
+```
+
+8.  Mejora en el rendimiento: calcular el rendimiento promedio para cada marca, distinguiendo antes y después de 2004
+
+```{r, eval=FALSE}
+# Forma 1
+mpg |>
+  mutate(
+    rend.antes = ifelse(year < 2005, cty, NA),
+    rend.despues = ifelse(year > 2004, cty, NA)
+  ) |>
+  group_by(manufacturer) |>
+  summarise(
+    rend.mn.antes = mean(rend.antes, na.rm = TRUE),
+    rend.mn.despues = mean(rend.despues, na.rm = TRUE)
+  ) 
+```
+
+```{r}
+# Forma 2
+mpg |>
+  group_by(manufacturer)|>
+  summarise(
+    rend.mn.antes = mean(cty[year < 2005]),
+    rend.mn.despues = mean(cty[year > 2004]))
+```
+
+Camino más corto
+
+```{r}
+mpg %>%
+    group_by(manufacturer, antes_2004 = year < 2005) %>%
+    summarise(rend.mn = mean(cty)) %>%
+    pivot_wider(data = .,
+                names_from = antes_2004,
+                values_from = rend.mn,
+                names_glue = "antes_2004_{ifelse(antes_2004, 'si', 'no')}")
+
+```
+
+9.  Calcular el rendimiento promedio en carretera (`hwy`), para 3 marcas seleccionadas aleatoriamente y ordena el resultado de menor a mayor
+
+```{r}
+set.seed(123)
+mpg |>
+  filter(manufacturer %in% sample(unique(manufacturer), 3)) |>
+  group_by(manufacturer) |>
+  summarise(rend.mn = mean(cty))
+```
+
+10. Crear una nueva variable que transforme `hwy` (millas por galón) en litros/100 km
+
+Primero tenés que saber que la conversión de galones a litros es `1 gallón = 3.78541 litros`, y para convertir de millas a kilómetros es `1 milla = 1.60934 km`. Ahora, podés crear la variable con `mutate()`
+
+```{r}
+mpg_inc <- mpg |> mutate(litkm = (1/hwy)*(3.78541 /1.60934)*100 )
+mpg_inc
+```
