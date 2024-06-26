@@ -1,0 +1,799 @@
+---
+title: <span style="color:#88398A"> Certificación en Ciencia de datos </span>
+subtitle: <span style="color:#88398A">Módulo 3 - Manipulación de datos con `tidyverse`</span>
+author: <span style="color:#88398A"> <font size="6">Natalia da Silva</span></font>
+date: today
+bibliography: bibliophd.bib
+date-format: YYYY[ -Módulo 3]
+format:
+  revealjs: 
+    theme: default
+    slide-number: c/t
+incremental: false
+embed-resources: true
+logo: logo.png
+widescreen: no
+code-line-numbers: false
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{css echo=FALSE}
+.small-code{
+  font-size: 70%  
+}
+```
+
+```{css echo=FALSE}
+.small-text{
+  font-size: 70%  
+}
+```
+
+```{css echo=FALSE}
+.small-text2{
+  font-size: 50%  
+}
+```
+
+
+
+## <span style="color:#88398A">¿Qué vimos?</span>
+
+Capítulo 3 de r4ds 2da edición, 2023
+
+Transformación de datos con `dplyr`:
+
+- Introduce una forma de trabajo que hace relativamente más sencillo trabajar con datos
+
+- Principal funcionalidad es un conjunto de `verbos` que facilitan la transformación de datos.
+Qué se pueden agrupar según donde se realizan las operaciones.
+
+
+
+¿Qué clases de objeto retorna `dplyr`?
+
+---
+
+
+
+
+
+## <span style="color:#88398A">Más `dplyr`, `case_match()`</span>
+
+Queremos recodificar `class`, usamos `case_match()`
+```{r, echo=TRUE, eval=FALSE}
+
+mpg  |> 
+  select(class) |> 
+  table()
+
+ 2seater compact  midsize  minivan  pickup subcompact   suv 
+  5         47      41        11      33         35      62 
+```
+
+---
+
+## <span style="color:#88398A">Más `dplyr`, `case_match()`</span>
+
+`case_match()` usa valores para comparar con los de la variable seleccionada
+<!-- cada caso es evaluado secuencialmente y el primer match para cada elemento determina el valor correspondiente en el vector de salida. -->
+
+Para caracteres se recodifica directamente con el nombre
+```{r, echo=TRUE}
+library(tidyverse)
+mpg |> select(class) |> 
+  mutate(class = case_match(class, 
+                            "2seater" ~ "2se", 
+                         "compact" ~ "co",
+                         "midsize" ~ "mid",
+                        "minivan" ~ "mini", 
+                        "pickup" ~ "pi",
+                        "subcompact" ~ "sub",
+                        "suv" ~ "su"))|>
+  select(class) |> 
+  table()
+
+```
+---
+
+
+## <span style="color:#88398A">Más `dplyr`, `case_match()`</span>
+
+```{r, echo=TRUE, eval=FALSE}
+mpg |>
+  select(cyl) |> 
+  table()
+
+ 4  5  6  8 
+81  4 79 70
+mpg |> 
+  select(cyl) |> 
+  mutate(cyl = case_match(cyl, 
+                        4 ~ 3, 
+                        5~ 3,
+                        6 ~ 7,
+                        8~ 5)) |>
+select(cyl) |> 
+table()
+ 3  5  7 
+85 70 79 
+```
+---
+
+
+## <span style="color:#88398A">Más `dplyr`, `case_match()`</span>
+
+
+```{r, echo=TRUE,  eval=FALSE}
+mpg |> 
+  select(cyl) |> 
+  mutate(cyl = case_match(cyl, 
+                       c(4, 5) ~ 3, 
+                        6 ~ 7,
+                        8 ~ 5)) |>
+  select(cyl) |> 
+  table()
+
+3  5  7 
+85 70 79 
+```
+---
+
+## <span style="color:#88398A">Más `dplyr`, `case_when()`</span>
+
+`case_when()` usa expresiones lógicas del lado izquierdo de la fórmula
+
+
+```{r, echo=TRUE,  eval=FALSE}
+
+mpg |> 
+  select(cyl) |> 
+  mutate(cyl = case_when( 
+                        cyl %in% c(4, 5) ~ 3, 
+                        cyl %in% 6 ~ 7,
+                        cyl %in% 8~ 5)) |>
+select(cyl) |> 
+table()
+
+ 3  5  7 
+85 70 79 
+```
+---
+
+## <span style="color:#88398A"> `slice()`</span>
+
+Selecciona filas por su posición
+
+```{r, echo=TRUE, eval =FALSE}
+mpg |> 
+  slice(n())
+  
+```
+En este caso selecciona la última fila.
+
+¿Qué hace el siguiente código?
+
+```{r, eval=FALSE, echo=TRUE}
+mpg |> 
+  slice(7:9)
+  
+```
+---
+
+## <span style="color:#88398A"> Más `slice()`</span>
+
+- `slice_head()`  y `slice_tail()`  seleccionan la primera y la última fila
+ 
+ 
+- `slice_min()` y  `slice_max()` seleccionan filas con el valor más grande o chico en una variable
+
+- `slice_sample()` selecciona filas aleatoriamente
+
+---
+## <span style="color:#88398A"> Más `dplyr`</span>
+
+- Muchas veces quisieramos realizar operaciones sobre una selección de variables que cumplen una determinada condición.
+
+- Ejemplo: realizar una operación sobre todas las variables numéricas, o a todas los nombres de la variables de fecha agregarles `_Date` al final, o calcular medidas de resumen sólo sobre determinadas variables, etc.
+
+
+---
+
+
+
+## <span style="color:#88398A"> Más `dplyr`, `across()`</span>
+
+<div class=small-text>
+- Operar en múltiples columnas al mismo tiempo mediante `across()`
+
+- `across()` hace sencillo aplicar la misma transformación a muchas columnas usando la misma semántica que `select()`  dentro de funciones como `summarise()` y `mutate()`
+
+- `across` tiene dos argumentos básicos:
+
+    
+    - las columnas que queremos seleccionar `.cols`, se pueden seleccionar variables por nombre, posición o tipo (tipo el usado en `select()`)
+    - Segundo argumento de `across()` es `.fns`,  que es una función o lista de ellas que se aplican a cada columna. Puede usarse con estilo fórmula
+    
+</div>    
+
+---
+
+## <span style="color:#88398A"> Más `dplyr`, `across()`</span>
+```{r, eval=FALSE, echo=TRUE}
+mtcars |> 
+  group_by(cyl, disp) |>
+  summarise(
+    mwt = mean(wt),
+    mmpg = mean(mpg),
+    mdrat = mean(drat)
+  ) 
+```
+
+Equivalente usando `across` y variables seleccionadas por nombre
+
+```{r, eval=FALSE, echo=TRUE}
+mtcars |> 
+  group_by(cyl, disp) |>
+  summarise( across(.cols = c(wt,mpg,drat), .fns = mean))
+
+```
+
+---
+
+## <span style="color:#88398A"> Más `dplyr`, `across()`</span>
+
+```{r, eval=FALSE, echo=TRUE}
+mtcars |> 
+  group_by(cyl, disp) |>
+  summarise(across(.cols = c(wt,mpg,drat), .fns = mean)
+  )
+```
+
+Equivalente usando `across` y variables seleccionadas  por posición
+
+```{r, eval=FALSE, echo=TRUE}
+mtcars |> 
+  group_by(cyl, disp) |>
+  summarise(across(.cols = c(6, 1, 5), .fns = mean)
+  )
+
+```
+---
+
+
+## <span style="color:#88398A"> Más `dplyr`, `across()`</span>
+
+```{r,  echo=TRUE}
+mtcars |> 
+  group_by(cyl, disp) |>
+  summarise(across(.cols = c(wt,mpg,drat),
+                   .fns = mean,na.rm = TRUE,
+                   .names = "{col}_mean")
+            )
+
+```
+---
+
+## <span style="color:#88398A"> Más `dplyr`, `across()`</span>
+Podemos transformar cada variable con más de una función nombradas en una lista 
+```{r,  echo=TRUE}
+mtcars |> 
+summarise(across(.cols = c(wt,mpg,drat),
+                 .fns = list(mean = mean, sd = sd), 
+                 na.rm = TRUE))
+```
+---
+
+## <span style="color:#88398A"> Más `dplyr`, `across()`</span>
+En `mpg` hay variables numéricas y categóricas, si queremos hacer lo mismo para las columnas que son numéricas podemos usar `where(is.numeric())`
+
+ `where()` es una función de ayuda que selecciona las variables para las que una función retorna TRUE.
+
+
+```{r, eval=FALSE, echo=TRUE}
+mpg |> 
+  summarise(across(where(is.numeric), 
+                   mean, na.rm = TRUE))
+```
+
+---
+
+
+
+
+## <span style="color:#88398A"> Más `dplyr`, `across()`</span>
+También se puede escribir como fórmula
+
+
+```{r, eval=FALSE, echo=TRUE}
+mpg |> 
+  summarise(across(where(is.numeric),  mean, na.rm = TRUE))
+
+#Equivalente
+mpg |> 
+  summarise(across(where(is.numeric), ~ mean(.x, na.rm = TRUE)))
+
+```
+---
+
+
+## <span style="color:#88398A"> Programando con  `dplyr`, </span>
+
+<div class=small-text>
+La mayoría de los verbos de `dplyr` usan **tidy evaluations**, que es un caso especial de non-standard evaluation usanda en `tidyverse`
+dos formas en `dplyr`:
+
+- `arrange()`, `count()`, `filter()`, `group_by()`, `mutate()`, y `summarise()` usan data masking entonces uno puede usar variables como si estuvieran en el env, ejemplo usamos `mi_var` en vez de `datos$mi_var`.
+
+- `across()`, `relocate()`, `rename()`, `select()`, y `pull()` usan **tidy selection** podemos seleccionar variables basadas en su posición, nombre o tipo, ejemplo `starts_with("x")` o `is.numeric`.
+</div>
+---
+
+
+
+## <span style="color:#88398A"> Programando con  `dplyr`, </span>
+
+<div class=small-text>
+El principal desafío programando con funciones que usan **data masking** es cuando queremos obtener la variable de una variable en el env. en vez de poner directamente el nombre de la variable.
+
+Dos casos:
+
+- Cuando tengo una variable en un argumento de una función ebemos poner el argumento con llaves dobles {{}}. Ejemplo `filter(datos, {{ var }})`.
+
+- Cuando tenemos una  env-variable que es un vector character. veremos luego
+
+https://dplyr.tidyverse.org/articles/programming.html
+
+</div>
+---
+
+## <span style="color:#88398A"> Más `dplyr`, `across()`</span>
+
+Uso programáticamente
+
+```{r, eval=FALSE, echo=TRUE}
+resultado <- function(dato, numeric_cols = NULL, ...) {
+  dato |>
+    group_by(...) |>
+    summarise(across({{numeric_cols}}, list(
+      mean = ~mean(.x, na.rm = TRUE),
+      sd = ~sd(.x, na.rm = TRUE),
+      q05 = ~quantile(.x, 0.05, na.rm = TRUE),
+      q95 = ~quantile(.x, 0.95, na.rm = TRUE)
+    ), .names = "{col}_{fn}"))
+}
+
+resultado(mpg , numeric_cols = c(cty, hwy),
+           manufacturer)
+```
+
+
+
+---
+
+## <span style="color:#88398A"> Más `dplyr`</span>
+
+```{r, eval=FALSE, echo=TRUE}
+#Versiones anteriores de dplyr con "scoped verbs"
+mpg |> 
+mutate_if(is.numeric, mean, na.rm = TRUE) |> dim()
+
+#Nuevas versiones de `dplyr`
+mpg |>
+  mutate(across(where(is.numeric), mean, na.rm = TRUE)
+
+# Diferencia ?
+
+mpg |>
+  mutate(across(where(is.numeric), mean, 
+                na.rm = TRUE, .names = "{col}_mean")
+         
+
+```
+Explorar `vignette("colwise")`
+---
+
+
+
+
+## <span style="color:#88398A"> Más `dplyr`</span>
+
+```{r, eval=FALSE, echo=TRUE}
+#Versiones anteriores de dplyr con "scoped verbs"
+mpg |> 
+select_if(is.numeric) |> dim()
+
+#Nuevas versiones de `dplyr`
+mpg |>
+  select(where(is.numeric))|> dim()
+
+
+```
+---
+
+## <span style="color:#88398A"> Estructurar datos</span>
+
+- Lograr que tus datos estén en una forma adecuada para la visualización y modelado.
+
+- Sin estructurar los datos muchas veces es imposible trabajar con ellos.
+
+---
+
+## <span style="color:#88398A"> Estructurar datos</span>
+
+Componentes claves:
+
+ - `tibbles` son una variante de los `data.frames`.
+
+- Importar datos, leer datos en distintos formatos.
+
+- Datos limpios, una forma consistente de guardar tus datos para que sea más sencillo transformar, visualizar y modelar (¿qué es tidy data?).
+---
+
+## <span style="color:#88398A"> Vamos a empezar por datos limpios</span>
+
+-  A que le llamamos datos limpios (tidy data), nos concentraremos en el paquete `tidyr` de `tidyverse`.
+
+- Ordenando usando `pivol_longer()` y `pivot_wider()`.
+
+- Es importante aprender como organizar nuestros datos en una forma consistente (tidy data)
+
+---
+
+## <span style="color:#88398A"> Posibles problemas de los datos</span>
+
+- Los nombres de las columnas son valores no nombres de variables.
+
+- Muchas variables están ordenadas en una sola columna.
+
+- Muchas unidades observacionales están ordenadas en la misma tabla.
+
+- Una sola unidad observacional está en muchas tablas.
+---
+
+## <span style="color:#88398A"> ¿Qué son datos limpios? (tidy data)</span>
+
+- Cada variable forma una columna
+
+- Cada observación forma una fila
+
+- Cada valor debe estar en una celda
+
+---
+
+## <span style="color:#88398A">Qué son datos limpios? (tidy data)</span>
+
+<img src="rules.png" height="300px" width="600px" />
+
+---
+
+## <span style="color:#88398A"> Diferentes formas de los mismos datos</span>
+
+Ejemplo del paper Tidy data:  [paper tidy data](http://www.jstatsoft.org/v59/i10/paper)
+
+<img src="example_dat.png" height="400px" width="600px" />
+---
+
+
+## <span style="color:#88398A"> Importancia de los datos limpios</span>
+
+Ventajas:
+
+- Si tenés una forma consistente de guardar los datos es más sencillo aprender las herramientas que funcionan con la misma
+
+- Tener la variables en columnas son naturalmente manejadas en la forma vectorizada de R.
+La mayoría de las funciones de R funcionan con valores vectorizados.
+Esto hace natural transformar la estructura de datos a una limpia (tidy data).
+---
+
+## <span style="color:#88398A"> Trágica realidad </span>
+
+Los datos en general no están limpios  así que tenemos que aprender a limpiar!
+
+¿Porqué los datos no están limpios?
+- La gente no esta familiarizada con el concepto de **tidy data** y no es sencillo derivarlo solo.
+
+- Los datos están a menudo organizados para simplificar algo que no necesariamente es análisis de datos.
+---
+
+## <span style="color:#88398A"> Pasos para limpiar!</span>
+
+- Identificar cuales son variables y cuales observaciones.
+
+- Identificar si hay variables que deben ser dispuestas en múltiples columnas.
+
+- Identificar si una observación debe ser incluida en múltiples filas.
+---
+
+## <span style="color:#88398A">Verbos de datos limpios pkg `tidyr`</span>
+
+- `pivot_longer()` reestructura los datos moviendo columnas a filas.
+
+- `pivot_wider()` reestructura los datos moviendo filas a columnas.
+
+- `separate` divide columnas en múltiples variables.
+---
+
+## <span style="color:#88398A"> `pivot_longer()`</span>
+
+Problema común: nombres de columnas no representan nombres de variable, como debería ser, sino que son valores de variables. 
+
+Se puede resolver con `pivot_longer()`.
+
+---
+
+## <span style="color:#88398A"> `pivot_longer()`</span>
+
+Genero datos con `tibble`
+
+```{r,echo=TRUE,warning = FALSE,message=FALSE}
+library(tidyverse)
+medico <- tibble(nombre = c("Pablo Gomez", "Mariana Mattos",
+                           "Laura Almo"),
+                 tratamientoa = c(NA, 4, 6),
+                tratamientob = c(18, 1, 7))
+         
+medico
+ 
+```
+---
+
+
+## <span style="color:#88398A"> `pivot_longer()`</span>
+
+<div class=small-text>
+Necesitamos unir (`pivot`) estas columnas en un nuevo par de variables. 
+Necesitamos describir tres argumentos:
+
+- Las columnas cuyos nombres son valores no variables, en este caso `tratamientoa` y `tratamientob`, argumento  `cols`
+
+- Un nombre para la variable cuyo valor está en el nombre de la columna, en este caso le podemos llamar `tratamiento`, argumento `names_to` 
+
+- Un nombre para la variable cuyos valores están en las celdas, en este caso le podemos llamar `casos`, argumento `values_to`
+</div>
+
+---
+
+## <span style="color:#88398A"> Reestructuro con `pivot_longer()`</span>
+
+<div class=small-text>
+`pivot_longer(data, cols, names_to, values_to,...)`
+
+- `data`: data.frame a pivotar
+
+- `cols`: Columnas a pivotar en formato largo
+
+- `names_to`: un vector de tipo character que  especifica el nombre de la columna o columnas a crear con los datos contenidos en el nombre de la columna
+
+
+- `values_to`: un string especificando el nombre de la columna a crear con los datos contenidos en las celdas
+
+- ...: otros argumentos
+
+</div>
+
+---
+
+
+
+## <span style="color:#88398A">Reestructuro con `pivot_longer()`</span>
+
+- Problema: nombres de las columnas son valores
+- Tenemos que transformar columnas en filas, uso `pivot_longer()`
+
+
+```{r, eval=FALSE, echo=TRUE}
+medico |> 
+pivot_longer(cols = c("tratamientoa", "tratamientob"),
+             names_to = "tratamiento" , values_to = "conteo") 
+
+
+```
+---
+
+
+## <span style="color:#88398A">Reestructuro con `pivot_longer()`</span>
+
+Resultados equivalentes con `pivot_longer()`
+
+```{r, eval=FALSE, echo=TRUE}
+
+medico |> 
+pivot_longer(cols = starts_with("tratamiento"),
+             names_to ="tratamiento" , values_to = "conteo") 
+
+
+medico |> 
+pivot_longer(cols = 2:3,
+             names_to ="tratamiento" , values_to = "conteo") 
+
+medico |> 
+pivot_longer(cols = !nombre, 
+             names_to ="tratamiento" , values_to = "conteo") 
+
+```
+
+Las columnas a girar se especifican con el estilo de notación  usado en `select()` (tipo, nombre y posición )
+
+---
+
+## <span style="color:#88398A">Reestructuro con pivot_longer()</span>
+
+```{r, echo=TRUE}
+pivotmed <- medico |>
+pivot_longer(cols = c("tratamientoa", "tratamientob"),
+             names_to ="tratamiento" , values_to = "conteo") 
+
+pivotmed
+```
+---
+
+## <span style="color:#88398A">Reestructuro con pivot_longer()</span>
+Podríamos combinar con lo que aprendimos con `dplyr` para recodificar tratamiento
+
+```{r, echo=TRUE}
+pivotmed <-medico |>
+pivot_longer(cols = c("tratamientoa", "tratamientob"),
+             names_to ="tratamiento" , values_to = "conteo") |> 
+  mutate(tratamiento =  case_match(tratamiento, "tratamientoa" ~ "a",
+                               "tratamientob" ~ "b"))
+
+
+pivotmed
+```
+---
+
+
+## <span style="color:#88398A">Reestructuro con `pivot_wider()`</span>
+
+<div class=small-text>
+- `pivot_wider()` es la operación opuesta a `pivot_longer()` se usa cuando las observaciones
+están dispersas en muchas filas. Incrementa el número de columnas y disminuye el de las filas.
+
+
+`pivot_wider(data, names_from, values_from, ...)`
+
+-  `names_from` : La columna que tiene en las observaciones  el nombre de las nuevas columnas
+
+- `values_from`:La columna que tiene los valores
+
+- `...`: otros argumentos 
+
+</div>
+
+---
+
+## <span style="color:#88398A">Reestructuro con `pivot_wider()`</span>
+
+Datos que quiero reestructurar, quiero poner  los tratamientos `a` y `b` en las columnas
+
+```{r, echo=TRUE}
+pivotmed
+
+```
+---
+
+## <span style="color:#88398A">Reestructuro con ` pivot_wider()`</span>
+
+```{r, echo=TRUE}
+pivotmed |> 
+  pivot_wider(names_from = tratamiento, values_from = conteo)
+
+```
+---
+
+
+## <span style="color:#88398A">`separate()`</span>
+
+<div class=small-text>
+- `separate` separa una columna en múltiples columnas. Por defecto cualquier símbolo no alfanumérico se usa para separar la columna, 
+
+Principales parámetros
+
+- `data`: `data.frame`.
+
+- `col`: el nombre de la columna o posición.
+
+- `into`: nombres de las nuevas variables para crear, vector tipo `character`.
+
+- `sep`: separador entre columnas
+
+Formalmente si es de tipo `character`, `sep` es una expresión  regular que veremos en más detalle luego. Si es `numeric`, `sep` es interpretado como una posición para separar contando de izquierda a derecha arranca en `1` y de derecha a izquierda de `-1`.
+</div>
+
+---
+
+## <span style="color:#88398A">`separate()`</span>
+
+```{r, echo=TRUE}
+tib <- tibble(x =c(NA, "a*b", "a.c", "a&d"),
+              month_year = c(121999, 112005, 102001, 102001) ) 
+tib
+
+tib |> separate(col = x, into = c("V1", "V2"))
+
+```
+---
+
+## <span style="color:#88398A">`separate()`</span>
+
+```{r, echo=TRUE}
+tib |> separate(col = month_year, 
+                 into = c("month", "year"), sep = 2)
+```
+
+---
+
+## <span style="color:#88398A">`separate()`</span>
+
+¿Qué pasa con la clase de las nuevas variables en `tib2`?
+```{r, echo = TRUE}
+tib2 <- tibble(x =c(NA, "1*b", "3.c", "8&d"),
+              month_year = c(121999, 112005, 102001, 102001) ) 
+tib2
+
+tib2 |> separate(col = x, into = c("V1", "V2"))
+```
+---
+
+
+## <span style="color:#88398A">`separate()`</span>
+
+<div class=small-text>
+Deja por defecto el tipo original y en algunos casos no es lo correcto.
+Uso `convert = TRUE` lo intenta convertir a un tipo más apropiado.
+
+```{r, echo=TRUE}
+tib2 <- tibble(x =c(NA, "1*b", "3.c", "8&d"),
+              month_year = c(121999, 112005, 102001, 102001) ) 
+tib2
+
+tib2 |> separate(col = x, into = c("V1", "V2"), convert = TRUE)
+```
+</div>
+---
+
+## <span style="color:#88398A">`unite()`</span>
+
+`unite()` es el inverso de `separate()`. Pega múltiples columnas en una.
+
+- `unite(data, col, ...)`
+---
+
+
+
+```{r, echo=TRUE}
+tib3 <- tib |> separate(month_year, into = c("month", "year"),
+                         sep = 2)
+
+tib3 |> 
+  unite(col = v1, month, year )
+```
+
+---
+## <span style="color:#88398A">`unite()`</span>
+
+```{r, echo=TRUE}
+tib3 |> 
+  unite(col = v1, month, year, sep = "/" )
+```
+---
+
+
+
+
+
+## <span style="color:#88398A">Tu turno, Actividad 3</span> 
+
+
+
+
+
+
+  
+  
+ 
+
